@@ -1,0 +1,85 @@
+---
+title: ''
+output: pdf_document
+---
+
+## Homework 3 Jialu Ran
+
+The dataset contains the annual number of emergency department (ED) visits for asthma in 954 ZIP codes from 52 counties in California during 2014. Zip code-level population \textit{pop}, median household income \textit{HHIncome} in 2010, annul ozone pollution concentration \textit{Ozone} in 2014 and annual ZIP code-level maximum temperature \textit{Tmax} in 2014 are also included. In this study, we are interested in examining the association between asthma emergency department (ED) visits and ozone pollution levels. 
+
+## Data Cleaning and Preprocessing
+
+We first checked if there are any missing values or duplicated rows in the dataset. As for missing values, row #958 has ZIP code missing, and we delete that row. We also find that there are three duplicated rows, and we drop them from the dataset. After data clearning, below is a table showing the summary statistics of the variables.
+
+|variable |missing |complete |n   |mean     |sd       |p0    |p25      |median  |p75       |p100   |
+|:--------|:-------|:--------|:---|:--------|:--------|:-----|:--------|:-------|:---------|:------|
+|County   |0       |954      |954 |6056.26  |27.53    |6001  |6037     |6059    |6075      |6115   |
+|ED       |0       |954      |954 |987.41   |1034.67  |35    |328      |629     |1244      |8506   |
+|HHIncome |0       |954      |954 |87202.1  |37699.14 |14917 |60624.5  |81125   |107270.25 |246979 |
+|Ozone    |0       |954      |954 |46.21    |8.75     |25.8  |39.4     |46.1    |52.7      |70.9   |
+|Pop      |0       |954      |954 |34961.35 |20164.25 |2016  |20342.75 |33077   |46895.5   |108969 |
+|Tmax     |0       |954      |954 |26.93    |3.63     |16.2  |24.4     |26.6    |29.7      |38.1   |
+|ZIP      |0       |954      |954 |93170.9  |1830.04  |90001 |91766.25 |93038.5 |94803.75  |96161  |
+
+```{r message=FALSE}
+here::i_am("Rmd/report.Rmd")
+knitr::opts_knit$set(root.dir = here::here())
+```
+
+```{r message=FALSE}
+# libraries
+library(ggplot2)
+library(ggthemes)
+library(dplyr)
+library(patchwork)
+
+# import data
+# data = read.csv("/Users/scarlett/Dropbox/Fall\ 2021/INFO\ 550/homework/homework\ 3/data/cleandata.csv")
+data = read.csv(here::here("data", "cleandata.csv"))
+```
+
+We define another variable named ED_rate = $\frac{\text{ED}}{\text{Pop}}$ since the expected ED is proportional to the population. We further rescale the original \textit{HHIncome} by $\frac{1}{10000}$ and denote it as \textit{HHIncome}. 
+
+```{r}
+# ED rate
+data$ED_rate = data$ED/data$Pop
+# log ED rate
+data$ED_rate_log = log(data$ED_rate)
+# HHIncome 
+HHIncome = data$HHIncome/10000
+```
+
+## Exploratory Analysis
+
+An exploratory analysis of the relationship between log asthma ED visit rate and Ozone, HHIncome, and Tmax are carried out respectively. The reason we use log asthma ED visit rate is that: the histogram of the count outcome number of asthma ED visits suggests a Poisson distribution can well capture it. Then, because the expected ED is proportional to the population, a Poisson loglinear model with the population as offset will be adopted in our analysis.
+
+Based on the scatter plot, a non-decreasing relationship exists between log asthma ED visit rate and Ozone, while HHIncome and the outcome are negatively correlated. Meanwhile, the relationship between log visit rate and Tmax has a cubic shape.
+
+```{r message=FALSE}
+# basic histogram for ED
+p1 = data %>% ggplot(aes(x=ED)) + geom_histogram(binwidth=50, fill="#688AD3", 
+                                                 color="#688AD3", alpha=0.2) +
+  theme_tufte() + geom_rangeframe()
+
+# Ozone
+p2 = ggplot(data, aes(x = Ozone, y = ED_rate_log)) + geom_point(alpha = 0.5) + 
+  # geom_smooth(col = "blue", size = 0.4)  + 
+  xlab("Ozone") + ylab("log ED rate") + geom_rangeframe() + 
+  theme_tufte() 
+
+# HHIncome
+p3 = ggplot(data, aes(x = HHIncome/10000, y = ED_rate_log)) + geom_point(alpha = 0.5) + 
+  geom_smooth(col = "blue", size = 0.4, method = "lm")  + 
+  xlab("HHIncome/10000") + ylab("log ED rate") + geom_rangeframe() + 
+  theme_tufte() 
+
+# Tmax
+p4 = ggplot(data, aes(x = Tmax, y = ED_rate_log)) + geom_point(alpha = 0.5) + 
+  geom_smooth(col = "blue", size = 0.4)  + 
+  xlab("Tmax") + ylab("log ED rate") + geom_rangeframe() + 
+  theme_tufte() 
+
+(p1|p2)/
+(p3|p4)
+```
+
